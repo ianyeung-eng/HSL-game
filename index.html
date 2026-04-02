@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Color Battle Ultra - Professional Mobile App</title>
+    <style>
+        :root { 
+            --bg: #000; 
+            --accent: #ff4757; 
+            --next: #2ed573; 
+            --prep: #f1c40f; 
+            --card-bg: rgba(255, 255, 255, 0.05);
+        }
+        
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+
+        body, html { 
+            margin: 0; padding: 0; height: 100%; width: 100%;
+            background: var(--bg); color: white; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            overflow: hidden; touch-action: none; 
+        }
+
+        #game-container { display: flex; flex-direction: column; height: 100%; width: 100%; position: relative; }
+
+        /* 玩家區域佈局 */
+        .player-section { 
+            flex: 1; width: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            position: relative; transition: all 0.4s ease; z-index: 10;
+        }
+        
+        #p2-area { transform: rotate(180deg); border-bottom: 1px solid #222; }
+        #p1-area { border-top: 1px solid #222; }
+
+        /* 中間資訊帶 - 預設全黑底 */
+        #mid-info { 
+            height: 16%; width: 100%;
+            display: flex; position: relative; background: #000; z-index: 100; 
+        }
+        
+        .info-layer { 
+            position: absolute; inset: 0; 
+            display: flex; flex-direction: column; 
+            justify-content: space-around; align-items: center; 
+            pointer-events: none; z-index: 200; 
+        }
+
+        .timer-big { font-size: 2.5rem; font-weight: 900; color: var(--accent); line-height: 1; }
+        .timer-prep { color: var(--prep); }
+        .status-msg { font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; text-align: center; }
+
+        .p2-view-group { transform: rotate(180deg); text-align: center; display: flex; flex-direction: column; gap: 4px; }
+        .p1-view-group { text-align: center; display: flex; flex-direction: column; gap: 4px; }
+
+        #target-overlay { 
+            position: absolute; inset: 0; display: none; z-index: 150; 
+            flex-direction: column; justify-content: center; align-items: center;
+        }
+        .target-hsl-box { text-align: center; font-size: 0.8rem; font-family: monospace; font-weight: bold; width: 100%; z-index: 160; }
+
+        /* 手機 App 控制項 */
+        .controls { 
+            position: absolute; bottom: 15px; width: 92%; 
+            display: flex; flex-direction: column; gap: 4px;
+            background: rgba(0,0,0,0.6); padding: 10px; border-radius: 16px; 
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+        }
+        .slider-wrap { width: 100%; display: flex; align-items: center; gap: 10px; }
+        .slider-label { font-size: 0.7rem; font-weight: bold; width: 15px; color: #888; }
+        
+        input[type=range] { flex: 1; appearance: none; height: 10px; border-radius: 10px; background: #333; margin: 12px 0; }
+        input[type=range]::-webkit-slider-thumb { 
+            appearance: none; width: 30px; height: 30px; border-radius: 50%; 
+            background: white; border: 4px solid #000; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+
+        .h-slider { background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) !important; }
+        .l-slider { background: linear-gradient(to right, #000, #fff) !important; }
+
+        /* 結算評分大字 */
+        .score-display { position: absolute; display: flex; flex-direction: column; align-items: center; opacity: 0; transition: 0.4s; z-index: 180; pointer-events: none; }
+        .percent { font-size: 4.5rem; font-weight: 900; text-shadow: 0 4px 15px #000; }
+        .player-hsl { font-size: 0.8rem; font-family: monospace; background: rgba(0,0,0,0.8); padding: 8px 18px; border-radius: 20px; margin-top: 10px; border: 1px solid rgba(255,255,255,0.2); }
+        
+        .total-tag { position: absolute; left: 16px; top: 16px; font-size: 0.75rem; font-weight: bold; color: rgba(255,255,255,0.4); }
+
+        #next-btn { 
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%); 
+            background: var(--next); color: white; border: none; padding: 14px 22px; 
+            border-radius: 12px; font-weight: 800; z-index: 300; 
+        }
+        
+        /* 選單畫面 - 黑底白字 */
+        .overlay-screen { 
+            position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 1000; 
+            display: flex; flex-direction: column; justify-content: center; 
+            align-items: center; text-align: center; padding: 20px;
+        }
+        .menu-card { width: 100%; max-width: 350px; margin-bottom: 20px; }
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
+        .menu-btn { 
+            background: #1a1a1a; color: white; border: 1px solid #333; 
+            padding: 8px 20px; font-size: 0.85rem; border-radius: 20px; 
+            cursor: pointer; transition: 0.2s;
+        }
+        .menu-btn.active { background: white; color: black; border-color: white; }
+        .start-action-btn { 
+            background: var(--next); color: white; border: none; 
+            padding: 15px 50px; font-size: 1.1rem; font-weight: bold; 
+            border-radius: 50px; cursor: pointer; margin-top: 30px; 
+        }
+
+        .hidden { display: none !important; }
+        .disabled { pointer-events: none; opacity: 0.1; }
+    </style>
+</head>
+<body>
+
+    <div id="mode-screen" class="overlay-screen">
+        <h1 style="color: white; font-size: 2.5rem; margin-bottom: 30px; letter-spacing: 2px;">COLOR BATTLE</h1>
+        <div class="menu-card">
+            <p style="font-size:0.7rem; color: #888; text-transform: uppercase;">Choose Mode</p>
+            <div class="btn-group">
+                <button class="menu-btn active" onclick="updateConfig('mode', 'normal', this)">NORMAL</button>
+                <button class="menu-btn" onclick="updateConfig('mode', 'special', this)">SPECIAL</button>
+            </div>
+        </div>
+        <button class="start-action-btn" onclick="showScreen('settings-screen')">CONTINUE</button>
+    </div>
+
+    <div id="settings-screen" class="overlay-screen hidden">
+        <h1 style="color: white;">SETTINGS</h1>
+        <div class="menu-card">
+            <p style="font-size:0.7rem; color: #888; text-transform: uppercase;">Rounds</p>
+            <div class="btn-group">
+                <button class="menu-btn active" onclick="updateConfig('totalRounds', 5, this)">5</button>
+                <button class="menu-btn" onclick="updateConfig('totalRounds', 10, this)">10</button>
+                <button class="menu-btn" onclick="updateConfig('totalRounds', 15, this)">15</button>
+            </div>
+        </div>
+        <div class="menu-card">
+            <p style="font-size:0.7rem; color: #888; text-transform: uppercase;">Memorize Time</p>
+            <div class="btn-group">
+                <button class="menu-btn" onclick="updateConfig('prepTime', 1, this)">1s</button>
+                <button class="menu-btn" onclick="updateConfig('prepTime', 3, this)">3s</button>
+                <button class="menu-btn active" onclick="updateConfig('prepTime', 5, this)">5s</button>
+            </div>
+        </div>
+        <div class="menu-card">
+            <p style="font-size:0.7rem; color: #888; text-transform: uppercase;">Battle Time</p>
+            <div class="btn-group">
+                <button class="menu-btn" onclick="updateConfig('battleTime', 5, this)">5s</button>
+                <button class="menu-btn active" onclick="updateConfig('battleTime', 10, this)">10s</button>
+                <button class="menu-btn" onclick="updateConfig('battleTime', 0, this)">INF</button>
+            </div>
+        </div>
+        <button class="start-action-btn" onclick="startGame()">BATTLE START</button>
+    </div>
+
+    <div id="end-screen" class="overlay-screen hidden">
+        <h1 id="winner-title" style="color: white;">FINISH</h1>
+        <p id="final-stats-text" style="font-size: 1.2rem; margin-bottom: 40px; color: #888;"></p>
+        <button class="start-action-btn" onclick="location.reload()">REPLAY</button>
+    </div>
+
+    <div id="game-container">
+        <div id="p2-area" class="player-section">
+            <div class="total-tag">P2 Total: <span id="p2-total">0</span></div>
+            <div class="score-display" id="p2-res-box">
+                <div class="percent" id="p2-percent">0%</div>
+                <div class="player-hsl" id="p2-val-display"></div>
+            </div>
+            <div class="controls" id="p2-ctrl">
+                <div class="slider-wrap wrap-h"><span class="slider-label">H</span><input type="range" id="p2-h" class="h-slider" min="0" max="360"></div>
+                <div class="slider-wrap wrap-s"><span class="slider-label">S</span><input type="range" id="p2-s" class="s-slider" min="0" max="100"></div>
+                <div class="slider-wrap wrap-l"><span class="slider-label">L</span><input type="range" id="p2-l" class="l-slider" min="0" max="100"></div>
+            </div>
+        </div>
+
+        <div id="mid-info">
+            <div id="target-overlay">
+                <div style="display: flex; flex-direction: column; justify-content: space-between; height: 100%; width: 100%;">
+                    <div class="target-hsl-box hidden" id="target-hsl-p2" style="transform: rotate(180deg);"></div>
+                    <div class="target-hsl-box hidden" id="target-hsl-p1"></div>
+                </div>
+            </div>
+            <div class="info-layer">
+                <div class="p2-view-group" id="p2-info-group">
+                    <div class="status-msg m-val">READY</div>
+                    <div class="timer-big t-val">0</div>
+                </div>
+                <div class="p1-view-group">
+                    <div class="status-msg m-val">READY</div>
+                    <div class="timer-big t-val">0</div>
+                </div>
+            </div>
+            <button id="next-btn" class="hidden" onclick="handleNext()">NEXT</button>
+        </div>
+
+        <div id="p1-area" class="player-section">
+            <div class="total-tag">P1 Total: <span id="p1-total">0</span></div>
+            <div class="score-display" id="p1-res-box">
+                <div class="percent" id="p1-percent">0%</div>
+                <div class="player-hsl" id="p1-val-display"></div>
+            </div>
+            <div class="controls" id="p1-ctrl">
+                <div class="slider-wrap wrap-h"><span class="slider-label">H</span><input type="range" id="p1-h" class="h-slider" min="0" max="360"></div>
+                <div class="slider-wrap wrap-s"><span class="slider-label">S</span><input type="range" id="p1-s" class="s-slider" min="0" max="100"></div>
+                <div class="slider-wrap wrap-l"><span class="slider-label">L</span><input type="range" id="p1-l" class="l-slider" min="0" max="100"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let config = { playerType: 'versus', mode: 'normal', totalRounds: 5, prepTime: 5, battleTime: 10 };
+        const state = { round: 1, p1Total: 0, p2Total: 0, target: { h: 0, s: 0, l: 0 }, challenge: 'all', timer: null };
+
+        function updateConfig(key, val, btn) {
+            config[key] = val;
+            btn.parentElement.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('.overlay-screen').forEach(s => s.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function startGame() {
+            document.querySelectorAll('.overlay-screen').forEach(s => s.classList.add('hidden'));
+            state.round = 1; state.p1Total = 0; state.p2Total = 0;
+            nextRoundFlow();
+        }
+
+        function nextRoundFlow() {
+            document.getElementById('next-btn').classList.add('hidden');
+            document.querySelectorAll('.score-display').forEach(el => el.style.opacity = '0');
+            document.querySelectorAll('.target-hsl-box').forEach(el => el.classList.add('hidden'));
+            
+            // 修改 2: 出題前確保中間資訊帶為全黑
+            document.getElementById('mid-info').style.backgroundColor = "#000";
+
+            ['p1', 'p2'].forEach(p => {
+                document.getElementById(`${p}-h`).value = 180;
+                document.getElementById(`${p}-s`).value = 50;
+                document.getElementById(`${p}-l`).value = 50;
+                document.getElementById(`${p}-area`).style.backgroundColor = '#000';
+                document.querySelectorAll(`#${p}-ctrl .slider-wrap`).forEach(el => el.style.display = 'flex');
+            });
+            taskPreviewPhase();
+        }
+
+        function taskPreviewPhase() {
+            state.challenge = 'all';
+            if (config.mode === 'special') {
+                const rng = Math.random();
+                if (rng < 0.2) state.challenge = 'h';
+                else if (rng < 0.4) state.challenge = 's';
+                else if (rng < 0.6) state.challenge = 'l';
+            }
+            state.target = { h: rand(360), s: rand(80, 20), l: rand(40, 30) };
+            document.getElementById('p1-ctrl').classList.add('disabled');
+            document.getElementById('p2-ctrl').classList.add('disabled');
+            
+            let typeLabel = state.challenge === 'all' ? 'HSL' : state.challenge.toUpperCase();
+            let msg = `ROUND ${state.round}/${config.totalRounds}<br>FIND ${typeLabel}`;
+            
+            updateUI("", msg); 
+            setTimeout(() => preparePhase(msg), 2000);
+        }
+
+        function preparePhase(msg) {
+            const overlay = document.getElementById('target-overlay');
+            overlay.style.display = 'flex';
+            overlay.style.backgroundColor = `hsl(${state.target.h}, ${state.target.s}%, ${state.target.l}%)`;
+            document.querySelectorAll('.t-val').forEach(el => el.classList.add('timer-prep'));
+
+            let count = config.prepTime;
+            updateUI(count, msg);
+
+            state.timer = setInterval(() => {
+                count--;
+                updateUI(Math.max(0, count), msg);
+                if (count <= 0) { clearInterval(state.timer); battlePhase(); }
+            }, 1000);
+        }
+
+        function battlePhase() {
+            document.getElementById('target-overlay').style.display = 'none';
+            document.getElementById('p1-ctrl').classList.remove('disabled');
+            document.getElementById('p2-ctrl').classList.remove('disabled');
+            document.querySelectorAll('.t-val').forEach(el => el.classList.remove('timer-prep'));
+            
+            if (state.challenge !== 'all') {
+                ['p1', 'p2'].forEach(p => {
+                    if(state.challenge !== 'h') document.querySelector(`#${p}-ctrl .wrap-h`).style.display = 'none';
+                    if(state.challenge !== 's') document.querySelector(`#${p}-ctrl .wrap-s`).style.display = 'none';
+                    if(state.challenge !== 'l') document.querySelector(`#${p}-ctrl .wrap-l`).style.display = 'none';
+                });
+            }
+
+            ['p1', 'p2'].forEach(p => updatePreview(p));
+
+            let battleMsg = `ADJUSTING ${state.challenge.toUpperCase()}`;
+            if (config.battleTime === 0) {
+                updateUI("∞", battleMsg);
+                const nBtn = document.getElementById('next-btn');
+                nBtn.classList.remove('hidden'); nBtn.innerText = "FINISH";
+            } else {
+                let count = config.battleTime;
+                updateUI(count, battleMsg);
+                state.timer = setInterval(() => {
+                    count--; updateUI(Math.max(0, count), battleMsg);
+                    if (count <= 0) { clearInterval(state.timer); settlePhase(); }
+                }, 1000);
+            }
+        }
+
+        function settlePhase() {
+            clearInterval(state.timer);
+            const s1 = getScore('p1');
+            const s2 = getScore('p2');
+            state.p1Total += s1.score; state.p2Total += s2.score;
+
+            document.getElementById('target-overlay').style.display = 'flex';
+            let targetMsg = `TARGET: H:${state.target.h} S:${state.target.s}% L:${state.target.l}%`;
+            
+            document.querySelectorAll('.target-hsl-box').forEach(el => {
+                el.innerText = targetMsg; el.classList.remove('hidden');
+                el.style.color = state.target.l > 50 ? '#000' : '#fff';
+            });
+
+            displayPlayerResult('p1', s1);
+            displayPlayerResult('p2', s2);
+
+            document.getElementById('p1-total').innerText = state.p1Total;
+            document.getElementById('p2-total').innerText = state.p2Total;
+
+            const nBtn = document.getElementById('next-btn');
+            nBtn.innerText = state.round < config.totalRounds ? "NEXT ROUND" : "FINAL RESULT";
+            nBtn.classList.remove('hidden');
+        }
+
+        function handleNext() {
+            const txt = document.getElementById('next-btn').innerText;
+            if(txt === "FINISH") settlePhase();
+            else if(txt === "NEXT ROUND") { state.round++; nextRoundFlow(); }
+            else endGame();
+        }
+
+        function getScore(p) {
+            const h = parseInt(document.getElementById(`${p}-h`).value);
+            const s = parseInt(document.getElementById(`${p}-s`).value);
+            const l = parseInt(document.getElementById(`${p}-l`).value);
+            
+            let diff;
+            if (state.challenge === 'h') {
+                diff = Math.min(Math.abs(h - state.target.h), 360 - Math.abs(h - state.target.h)) / 180;
+            } else if (state.challenge === 's') {
+                diff = Math.abs(s - state.target.s) / 100;
+            } else if (state.challenge === 'l') {
+                diff = Math.abs(l - state.target.l) / 100;
+            } else {
+                const dh = Math.min(Math.abs(h - state.target.h), 360 - Math.abs(h - state.target.h)) / 180;
+                const ds = Math.abs(s - state.target.s) / 100;
+                const dl = Math.abs(l - state.target.l) / 100;
+                diff = Math.sqrt(dh*dh + ds*ds + dl*dl);
+            }
+            return { h, s, l, score: Math.max(0, Math.floor(100 * (1 - diff))) };
+        }
+
+        function displayPlayerResult(p, res) {
+            let finalH = res.h, finalS = res.s, finalL = res.l;
+            if (state.challenge === 'h') { finalS = state.target.s; finalL = state.target.l; }
+            if (state.challenge === 's') { finalH = state.target.h; finalL = state.target.l; }
+            if (state.challenge === 'l') { finalH = state.target.h; finalS = state.target.s; }
+
+            document.getElementById(`${p}-area`).style.backgroundColor = `hsl(${finalH}, ${finalS}%, ${finalL}%)`;
+            document.getElementById(`${p}-percent`).innerText = res.score + "%";
+            document.getElementById(`${p}-val-display`).innerText = `H:${finalH} S:${finalS}% L:${finalL}%`;
+            document.getElementById(`${p}-res-box`).style.opacity = "1";
+        }
+
+        function updatePreview(p) {
+            const h = document.getElementById(`${p}-h`).value;
+            const s = document.getElementById(`${p}-s`).value;
+            const l = document.getElementById(`${p}-l`).value;
+            
+            let vH = h, vS = s, vL = l;
+            if (state.challenge === 'h') { vS = 50; vL = 50; }
+            if (state.challenge === 's') { vH = state.target.h; vL = state.target.l; }
+            if (state.challenge === 'l') { vH = state.target.h; vS = state.target.s; }
+
+            document.getElementById(`${p}-area`).style.backgroundColor = `hsl(${vH}, ${vS}%, ${vL}%)`;
+            document.getElementById(`${p}-s`).style.background = `linear-gradient(to right, hsl(${h}, 0%, 50%), hsl(${h}, 100%, 50%))`;
+        }
+
+        function updateUI(t, m) {
+            document.querySelectorAll('.t-val').forEach(el => el.innerText = t);
+            document.querySelectorAll('.m-val').forEach(el => el.innerHTML = m);
+        }
+
+        function rand(max, min = 0) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+        function endGame() {
+            showScreen('end-screen');
+            let winner = state.p1Total > state.p2Total ? "P1 WINS!" : (state.p2Total > state.p1Total ? "P2 WINS!" : "DRAW!");
+            document.getElementById('winner-title').innerText = winner;
+            document.getElementById('final-stats-text').innerText = `P1: ${state.p1Total} | P2: ${state.p2Total}`;
+        }
+
+        ['p1', 'p2'].forEach(p => {
+            ['h', 's', 'l'].forEach(key => {
+                document.getElementById(`${p}-${key}`).addEventListener('input', () => updatePreview(p));
+            });
+        });
+    </script>
+</body>
+</html>
